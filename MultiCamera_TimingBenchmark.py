@@ -1,5 +1,5 @@
 # ===============================================================================
-#   WIP 03 - adding multiple cameras to the sample
+#   Multiple Cameras in an array, can be benchmarked for timing
 # ===============================================================================
 from pypylon import pylon
 from pypylon import genicam
@@ -61,23 +61,18 @@ def main():
         #Setup for Triggering
         SetupTriggering(cameras, TriggerSettings)
 
-        ## The parameter MaxNumBuffer can be used to control the count of buffers
-        ## allocated for grabbing. The default value of this parameter is 10.
-        #cameras.MaxNumBuffer.Value = 5
-
         # Start the grabbing 
-        #cameras.StartGrabbingMax(countOfImagesToGrab)
+        #Note that the Array uses only this method as of typing this
         cameras.StartGrabbing()
-        #cameras.ExecuteSoftwareTrigger()
 
         # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
-        # when c_countOfImagesToGrab images have been retrieved.
+        # when countOfImagesToGrab images have been retrieved.
         for i in range(countOfImagesToGrab):
 
-            #LocalVar for this loop
+            #Local Variable for referncing in this loop
             ThisCamera = i % maxCamerasToUse
 
-            #Trigger the camera
+            #Start Timing the camera, Single Image
             StartTime = time.time()
 
             cameras[ThisCamera].ExecuteSoftwareTrigger()
@@ -87,15 +82,18 @@ def main():
 
             # Image grabbed successfully?
             if grabResult.GrabSucceeded():
-                # Access the image data.
+                # This is where Image Processing would be placed;
+                # Ergo - this is the end of the timing consideration.
                 EndTime = time.time()
             else:
                 print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
             grabResult.Release()
             # Calculate the time taken        
             TimeElapsed = EndTime - StartTime
-            #print(f"Time between software trigger and image retrieval: {(TimeElapsed*1000):.6f} ms for camera {cameras[ThisCamera].GetDeviceInfo().GetModelName()}")
-            #print(f"Time between software trigger and image retrieval: {(TimeElapsed*1000):.6f} ms for camera {cameras[ThisCamera].DeviceUserID.GetValue()}")
+
+            #Output Time & Which camera. Several possible references:
+            #...for camera {cameras[ThisCamera].GetDeviceInfo().GetModelName()}")
+            #...for camera {cameras[ThisCamera].DeviceUserID.GetValue()}")
             print(f"Time between software trigger and image retrieval: {(TimeElapsed*1000):.6f} ms for camera {cameras[ThisCamera].DeviceSerialNumber.GetValue()}")
 
         #End of Camera Things
@@ -115,15 +113,11 @@ if(__name__):
     clear()
 
     #Number of cameras to use
-    # Limits the amount of cameras used for grabbing.
-    # It is important to manage the available bandwidth when grabbing with multiple cameras.
-    # This applies, for instance, if two GigE cameras are connected to the same network adapter via a switch.
+    # Limits the amount of cameras used for grabbing;
+    # It is important to manage the available bandwidth when grabbing with multiple cameras;
+    # This applies, for instance, if two GigE cameras are connected to the same network adapter via a switch;
     # To manage the bandwidth, the GevSCPD interpacket delay parameter and the GevSCFTD transmission delay
-    # parameter can be set for each GigE camera device.
-    # The "Controlling Packet Transmission Timing with the Interpacket and Frame Transmission Delays on Basler GigE Vision Cameras"
-    # Application Notes (AW000649xx000)
-    # provide more information about this topic.
-    # The bandwidth used by a FireWire camera device can be limited by adjusting the packet size.
+    # parameter can be set for each GigE camera device;
     maxCamerasToUse = 2
 
     # Number of images to be grabbed, per camera.
@@ -138,8 +132,11 @@ if(__name__):
 
     #Camera Information
     info = pylon.DeviceInfo()
+    #Callout by Interface approach:
+    # BaslerUsb               for USB 
+    # BaslerGigE              for GigE 
+    # BaslerGTC/Basler/CXP    for CXP
     info.SetDeviceClass('BaslerUsb')
-    #info.SetDeviceClass('BaslerGTC/Basler/CXP') #BaslerUsb for USB; BaslerGigE for GigE
 
     # Get the transport layer factory.
     tlFactory = pylon.TlFactory.GetInstance()
