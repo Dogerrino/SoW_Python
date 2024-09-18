@@ -1,0 +1,111 @@
+# ===============================================================================
+#   Multiple Cameras in an array
+#   This was originally a setup test script, to determine if all liscensing is
+#    is correctly implimented.
+# ===============================================================================
+from pypylon import pylon
+from pypylon import genicam
+
+import sys
+
+# import only system from os
+from os import system, name
+ 
+# Clean the terminal output
+def clear():
+
+    # for windows
+    if name == 'nt':
+        _ = system('cls')
+ 
+    # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
+
+#Get all cameras -> "devices"
+def TryGetDevices():
+    devices = tlFactory.EnumerateDevices()
+    if len(devices) == 0:
+        raise pylon.RuntimeException("No camera present.")
+    return devices
+
+#Setup Camera Array
+def SetupCameras(devices):
+    cameras = pylon.InstantCameraArray(min(len(devices), maxCamerasToUse))
+    # Create and attach all Pylon Devices.
+    for i, cam in enumerate(cameras):
+        cam.Attach(tlFactory.CreateDevice(devices[i]))
+
+        # Print the model name of the camera.
+        print(f"device {i} {cam.GetDeviceInfo().GetModelName()}")
+    return cameras
+
+#Main Function
+def func1():
+    try:
+        # Create an array of instant cameras for the found devices and avoid exceeding a maximum number of devices.
+        devices = TryGetDevices()
+        print(f"Length of deivces: {len(devices)}")
+        cameras = SetupCameras(devices)
+        cameras.Open()
+
+        # Start the grabbing 
+        #Note that the Array uses only this method as of typing this
+        cameras.StartGrabbing()
+        print("Start Grabbing")
+
+        # Camera.StopGrabbing() is called automatically by the RetrieveResult() method
+        # when countOfImagesToGrab images have been retrieved.
+        for i in range(countOfImagesToGrab):
+
+            #Local Variable for referncing in this loop
+            ThisCamera = i % maxCamerasToUse
+
+            # Wait for an image and then retrieve it. A timeout of 100 ms is used.
+            grabResult = cameras[ThisCamera].RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+
+            # Image grabbed successfully?
+            if grabResult.GrabSucceeded():
+                print(f"Grab {i} for {cameras[ThisCamera].GetDeviceInfo().GetModelName()} Succeeded!")
+            else:
+                print("Error: ", grabResult.ErrorCode, grabResult.ErrorDescription)
+            grabResult.Release()
+
+        #End of Camera Things
+        cameras.Close()
+        return 0 #exitCode
+
+    except genicam.GenericException as e:
+        # Error handling.
+        print("An exception occurred.")
+        print(e)
+        return 1 #exitCode
+
+    #sys.exit(exitCode)
+
+if(__name__ == '__main__'):
+    #Clean Slate
+    clear()
+
+    #Number of cameras to use
+    # Limits the amount of cameras used for grabbing;
+    # It is important to manage the available bandwidth when grabbing with multiple cameras;
+    # This applies, for instance, if two GigE cameras are connected to the same network adapter via a switch;
+    # To manage the bandwidth, the GevSCPD interpacket delay parameter and the GevSCFTD transmission delay
+    # parameter can be set for each GigE camera device;
+    maxCamerasToUse = 3
+
+    # Number of images to be grabbed, per camera.
+    countOfImagesToGrabperCamera = 2
+
+    #Total Number of Images to get
+    countOfImagesToGrab = countOfImagesToGrabperCamera * maxCamerasToUse
+
+    # Get the transport layer factory.
+    tlFactory = pylon.TlFactory.GetInstance()
+
+    #Actual Main
+    exitCode = func1()
+
+    #End things
+    sys.exit(exitCode)
